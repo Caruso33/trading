@@ -1,0 +1,5 @@
+binance-connector
+pylint
+black
+SQLAlchemy
+python-dotenv
