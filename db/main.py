@@ -1,5 +1,7 @@
 from dotenv import dotenv_values
 from sqlalchemy import MetaData, create_engine, text
+from sqlalchemy.orm import registry, sessionmaker
+from sqlalchemy.sql.expression import or_
 
 from .schemas import get_exchange_symbols_table
 
@@ -10,8 +12,13 @@ class DB:
     def __init__(self):
         db = config["db"]
 
-        self.engine = create_engine(db, echo=True, future=True)
-        self.metadata = MetaData()
+        self.engine = create_engine(db, echo=False, future=True)
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
+
+        self.mapper_registry = registry()
+
+        self.Base = self.mapper_registry.generate_base()
 
     def get_connection(self):
 
@@ -25,31 +32,60 @@ class DB:
 
     def create_tables(self):
 
-        exchange_symbols_table = get_exchange_symbols_table(self.metadata)
+        ExchangeSymbol = get_exchange_symbols_table(self.Base)
 
         # keys = exchange_symbols_table.c.keys()
 
         # print(keys)
 
-        self.metadata.create_all(self.engine)
+        self.mapper_registry.metadata.create_all(self.engine)
+
+        return [ExchangeSymbol]
 
 
 if __name__ == "__main__":
     db = DB()
 
-    conn = db.get_connection()
+    (ExchangeSymbol,) = db.create_tables()
 
-    db.create_tables()
+    # insert
+    # symbol1 = ExchangeSymbol(symbol="AAA")
+    # symbol2 = ExchangeSymbol(symbol="BBB")
 
-    # try:
-    #     result = conn.execute(get_text(command))
-    #     print(result.all())
+    # db.session.add(symbol1)
 
-    # finally:
-    #     conn.close()
+    # db.session.add_all([symbol1, symbol2])
 
-    # conn.execute(text("CREATE TABLE some_table (x int, y int)"))
-    # conn.execute(
-    #     text("INSERT INTO some_table (x, y) VALUES (:x, :y)"),
-    #     [{"x": 1, "y": 1}, {"x": 2, "y": 4}],
+    # db.session.commit()
+
+    # read
+    # exchange_symbols = db.session.query(ExchangeSymbol)
+    # for exchange_symbol in exchange_symbols:
+    #     print(exchange_symbol.symbol)
+
+    # exchange_symbol = (
+    #     db.session.query(ExchangeSymbol).filter(ExchangeSymbol.symbol == "AAA").first()
     # )
+    # print(exchange_symbol.symbol)
+
+    # exchange_symbols = db.session.query(ExchangeSymbol).filter(
+    #     or_(ExchangeSymbol.symbol == "AAA", ExchangeSymbol.symbol == "BBB")
+    # )
+    # for exchange_symbol in exchange_symbols:
+    #     print(exchange_symbol.symbol)
+
+    # exchange_symbol_count = db.session.query(ExchangeSymbol).count()
+    # print(exchange_symbol_count)
+
+    # update
+    # exchange_symbol = (
+    #     db.session.query(ExchangeSymbol).filter(ExchangeSymbol.symbol == "AAA").first()
+    # )
+    # exchange_symbol.symbol = "CCC"
+    # exchange_symbol = (
+    #     db.session.query(ExchangeSymbol).filter(ExchangeSymbol.symbol == "CCC").first()
+    # )
+    # print(exchange_symbol.symbol)
+
+    # delete
+    # db.session.delete(exchange_symbol)
